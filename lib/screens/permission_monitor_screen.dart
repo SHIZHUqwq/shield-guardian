@@ -184,7 +184,8 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
                 icon: null,
                 versionName: '',
                 versionCode: 0,
-                builtWith: BuiltWith.flutter));
+                builtWith: BuiltWith.flutter,
+                installedTimestamp: 0));
 
         // installed_apps doesn't provide permissions directly
         // We'll return empty list for now and rely on permission_handler checks
