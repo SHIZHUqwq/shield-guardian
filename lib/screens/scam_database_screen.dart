@@ -2,8 +2,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:device_apps/device_apps.dart';
+import 'package:installed_apps/installed_apps.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -98,10 +99,7 @@ class _ScamDatabaseScreenState extends State<ScamDatabaseScreen> {
     setState(() => _isScanning = true);
 
     try {
-      final apps = await DeviceApps.getInstalledApplications(
-        includeSystemApps: false,
-        onlyAppsWithLaunchIntent: true,
-      );
+      final apps = await InstalledApps.getInstalledApps(false, true);
 
       List<ScamApp> foundScams = [];
 
@@ -109,7 +107,7 @@ class _ScamDatabaseScreenState extends State<ScamDatabaseScreen> {
         for (var scamApp in _scamApps) {
           if (app.packageName.toLowerCase().contains(scamApp.packageName.toLowerCase()) ||
               scamApp.packageName.toLowerCase().contains(app.packageName.toLowerCase()) ||
-              app.appName.toLowerCase().contains(scamApp.name.toLowerCase())) {
+              app.name.toLowerCase().contains(scamApp.name.toLowerCase())) {
             foundScams.add(scamApp);
             break;
           }
@@ -206,7 +204,13 @@ class _ScamDatabaseScreenState extends State<ScamDatabaseScreen> {
 
   Future<void> _openSystemSettings() async {
     try {
-      await DeviceApps.openAppSettings('');
+      final Uri settingsUri = Uri.parse('package:android.settings.APPLICATION_SETTINGS');
+      if (await canLaunchUrl(settingsUri)) {
+        await launchUrl(settingsUri);
+      } else {
+        final Uri fallbackUri = Uri.parse('android.settings.SETTINGS');
+        await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+      }
     } catch (e) {
       _showError('无法打开系统设置');
     }

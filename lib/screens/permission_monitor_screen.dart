@@ -177,7 +177,12 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
         // 使用installed_apps获取权限
         final apps = await InstalledApps.getInstalledApps(false, true);
         final app = apps.firstWhere((a) => a.packageName == packageName,
-            orElse: () => AppInfo(name: '', packageName: '', icon: null));
+            orElse: () => AppInfo(
+                name: '',
+                packageName: '',
+                icon: null,
+                versionName: '',
+                versionCode: 0));
 
         // installed_apps doesn't provide permissions directly
         // We'll return empty list for now and rely on permission_handler checks
@@ -251,7 +256,12 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
 
   Future<void> _openAppSettings(String packageName) async {
     try {
-      await DeviceApps.openAppSettings(packageName);
+      final Uri settingsUri = Uri.parse('android.settings.APPLICATION_DETAILS_SETTINGS');
+      final Uri uriWithPackage = Uri.parse('package:$packageName');
+
+      if (await canLaunchUrl(settingsUri)) {
+        await launchUrl(uriWithPackage, mode: LaunchMode.externalApplication);
+      }
     } catch (e) {
       _showError('无法打开应用设置');
     }
