@@ -19,7 +19,6 @@ dependencies:
   share_plus: ^7.2.1
   installed_apps: ^1.4.0
   path_provider: ^2.1.1
-  app_usage: ^2.0.1
 
 dev_dependencies:
   flutter_test:

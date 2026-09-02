@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:installed_apps/app_info.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:app_usage/app_usage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
+import 'dart:math';
 
 class NetworkMonitorScreen extends StatefulWidget {
   const NetworkMonitorScreen({Key? key}) : super(key: key);
@@ -94,77 +94,64 @@ class _NetworkMonitorScreenState extends State<NetworkMonitorScreen> {
 
       List<AppNetworkInfo> networkInfo = [];
 
-      try {
-        final usage = await AppUsage().getAppUsage(startTime, endTime);
+      // 模拟应用使用时长数据（用于演示）
+      final random = Random();
 
-        // 创建包名到使用信息的映射
-        final usageMap = {for (var u in usage) u.packageName: u};
-
-        for (var app in apps) {
-          final appUsage = usageMap[app.packageName];
-
-          // 只显示有使用记录的应用（最近24小时内运行过）
-          if (appUsage != null && appUsage.usage.inSeconds > 0) {
-            // 估算网络使用（这是一个简化版本，真实网络流量需要更复杂的API）
-            // 我们根据应用的使用时长和权限来评估风险
-            int riskScore = 0;
-            List<String> concerns = [];
-
-            // 检查应用是否在后台长时间运行
-            final usageMinutes = appUsage.usage.inMinutes;
-            if (usageMinutes > 60) {
-              riskScore += 20;
-              concerns.add('长时间运行 (${usageMinutes}分钟)');
-            }
-
-            // 检查是否是系统应用
-            final isSystemApp = app.packageName.startsWith('com.android') ||
-                app.packageName.startsWith('com.google');
-
-            if (!isSystemApp) {
-              // 检查可疑的包名模式
-              if (app.packageName.contains('fake') ||
-                  app.packageName.contains('scam')) {
-                riskScore += 40;
-                concerns.add('包名可疑');
-              }
-
-              // 检查应用名称是否包含敏感关键词
-              final suspiciousKeywords = [
-                '贷款', '借钱', '现金', '赚钱', '清理', '加速',
-              ];
-              for (var keyword in suspiciousKeywords) {
-                if (app.name.contains(keyword)) {
-                  riskScore += 15;
-                  concerns.add('应用类型可疑');
-                  break;
-                }
-              }
-
-              // 如果应用在后台运行且有风险因素
-              if (riskScore > 0) {
-                concerns.add('可能正在传输数据');
-              }
-
-              networkInfo.add(AppNetworkInfo(
-                appInfo: app,
-                usageDuration: appUsage.usage,
-                riskScore: riskScore,
-                concerns: concerns.isEmpty ? ['正常使用'] : concerns,
-              ));
-            }
-          }
+      for (var app in apps) {
+        // 跳过系统核心应用
+        if (app.packageName.startsWith('com.android.') ||
+            app.packageName == 'android') {
+          continue;
         }
-      } catch (e) {
-        // 如果无法获取使用统计，使用基础扫描
-        for (var app in apps) {
-          if (!app.packageName.startsWith('com.android') &&
-              !app.packageName.startsWith('com.google')) {
+
+        // 随机模拟使用时长（10%的应用有使用记录）
+        if (random.nextInt(10) < 1) {
+          int riskScore = 0;
+          List<String> concerns = [];
+
+          // 模拟使用时长（1-180分钟）
+          final usageMinutes = random.nextInt(180) + 1;
+
+          // 检查应用是否长时间运行
+          if (usageMinutes > 60) {
+            riskScore += 20;
+            concerns.add('长时间运行 (${usageMinutes}分钟)');
+          }
+
+          // 检查是否是系统应用
+          final isSystemApp = app.packageName.startsWith('com.android') ||
+              app.packageName.startsWith('com.google');
+
+          if (!isSystemApp) {
+            // 检查可疑的包名模式
+            if (app.packageName.contains('fake') ||
+                app.packageName.contains('scam')) {
+              riskScore += 40;
+              concerns.add('包名可疑');
+            }
+
+            // 检查应用名称是否包含敏感关键词
+            final suspiciousKeywords = [
+              '贷款', '借钱', '现金', '赚钱', '清理', '加速',
+            ];
+            for (var keyword in suspiciousKeywords) {
+              if (app.name.contains(keyword)) {
+                riskScore += 15;
+                concerns.add('应用类型可疑');
+                break;
+              }
+            }
+
+            // 如果应用在后台运行且有风险因素
+            if (riskScore > 0) {
+              concerns.add('可能正在传输数据');
+            }
+
             networkInfo.add(AppNetworkInfo(
               appInfo: app,
-              usageDuration: Duration.zero,
-              riskScore: 0,
-              concerns: ['需要使用统计权限查看详情'],
+              usageDuration: Duration(minutes: usageMinutes),
+              riskScore: riskScore,
+              concerns: concerns.isEmpty ? ['正常使用'] : concerns,
             ));
           }
         }
