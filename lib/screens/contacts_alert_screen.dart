@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:flutter_sms/flutter_sms.dart';
+import 'package:telephony/telephony.dart';
 
 class ContactsAlertScreen extends StatefulWidget {
   const ContactsAlertScreen({Key? key}) : super(key: key);
@@ -140,17 +140,23 @@ class _ContactsAlertScreenState extends State<ContactsAlertScreen> {
     setState(() => _isLoading = true);
 
     try {
-      List<String> recipients = [];
+      final Telephony telephony = Telephony.instance;
+      int successCount = 0;
+
       for (var contact in _selectedContacts) {
         if (contact.phones.isNotEmpty) {
-          recipients.add(contact.phones.first.number);
+          try {
+            await telephony.sendSms(
+              to: contact.phones.first.number,
+              message: _messageController.text,
+            );
+            successCount++;
+          } catch (e) {
+            // 继续发送下一个
+            continue;
+          }
         }
       }
-
-      await sendSMS(
-        message: _messageController.text,
-        recipients: recipients,
-      );
 
       setState(() => _isLoading = false);
 
@@ -158,8 +164,8 @@ class _ContactsAlertScreenState extends State<ContactsAlertScreen> {
         showCupertinoDialog(
           context: context,
           builder: (context) => CupertinoAlertDialog(
-            title: const Text('发送成功'),
-            content: Text('已向${recipients.length}位联系人发送通知'),
+            title: const Text('发送完成'),
+            content: Text('成功向$successCount位联系人发送通知'),
             actions: [
               CupertinoDialogAction(
                 child: const Text('确定'),

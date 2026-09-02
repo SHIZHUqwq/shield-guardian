@@ -16,8 +16,7 @@ dependencies:
   package_info_plus: ^5.0.1
   device_info_plus: ^9.1.1
   flutter_contacts: ^1.1.7
-  sms_maintained: ^0.2.4
-  flutter_sms: ^2.3.3
+  telephony: ^0.2.0
 
 dev_dependencies:
   flutter_test:

@@ -42,7 +42,7 @@ android {
 
     defaultConfig {
         applicationId "com.shieldguardian.app"
-        minSdkVersion 23
+        minSdkVersion flutter.minSdkVersion
         targetSdkVersion 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
