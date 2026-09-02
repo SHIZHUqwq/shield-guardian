@@ -132,7 +132,6 @@ class _ContactsAlertScreenState extends State<ContactsAlertScreen> {
 
   Future<void> _performSendMessages() async {
     try {
-      // 构建短信URL
       List<String> phoneNumbers = [];
       for (var contact in _selectedContacts) {
         if (contact.phones.isNotEmpty) {
@@ -145,7 +144,6 @@ class _ContactsAlertScreenState extends State<ContactsAlertScreen> {
         return;
       }
 
-      // 使用SMS URL scheme
       final String recipients = phoneNumbers.join(',');
       final String message = Uri.encodeComponent(_messageController.text);
       final Uri smsUri = Uri.parse('sms:$recipients?body=$message');
@@ -182,67 +180,157 @@ class _ContactsAlertScreenState extends State<ContactsAlertScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text('通知联系人'),
-        backgroundColor: const Color(0xF0F9F9F9),
-        trailing: _selectedContacts.isNotEmpty
-            ? CupertinoButton(
-                padding: EdgeInsets.zero,
-                child: const Text('发送'),
-                onPressed: _sendMessages,
-              )
-            : null,
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            _buildMessageEditor(),
-            _buildSelectAllBar(),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CupertinoActivityIndicator())
-                  : _buildContactsList(),
+      backgroundColor: const Color(0xFFF2F2F7),
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          CupertinoSliverNavigationBar(
+            backgroundColor: const Color(0xFFF2F2F7),
+            border: null,
+            largeTitle: const Text(
+              '通知联系人',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
             ),
-          ],
-        ),
+            trailing: _selectedContacts.isNotEmpty
+                ? CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    child: const Text(
+                      '发送',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 17,
+                      ),
+                    ),
+                    onPressed: _sendMessages,
+                  )
+                : null,
+          ),
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                _buildMessageEditor(),
+                const SizedBox(height: 16),
+                _buildStatsCard(),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '选择联系人',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: _contacts.isEmpty
+                        ? null
+                        : () {
+                            setState(() {
+                              _selectAll = !_selectAll;
+                              if (_selectAll) {
+                                _selectedContacts = List.from(_contacts);
+                              } else {
+                                _selectedContacts.clear();
+                              }
+                            });
+                          },
+                    child: Text(
+                      _selectAll ? '取消全选' : '全选',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: _contacts.isEmpty
+                            ? CupertinoColors.systemGrey
+                            : CupertinoColors.systemBlue,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          _isLoading
+              ? const SliverFillRemaining(
+                  child: Center(child: CupertinoActivityIndicator()),
+                )
+              : _buildContactsList(),
+        ],
       ),
     );
   }
 
   Widget _buildMessageEditor() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
         color: CupertinoColors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: CupertinoColors.systemGrey5,
-            width: 0.5,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-        ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '短信内容',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF9500).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  CupertinoIcons.chat_bubble_text_fill,
+                  color: Color(0xFFFF9500),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                '短信内容',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Container(
             decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey6,
-              borderRadius: BorderRadius.circular(8),
+              color: const Color(0xFFF2F2F7),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: CupertinoTextField(
               controller: _messageController,
               placeholder: '输入要发送的短信内容',
-              maxLines: 4,
-              padding: const EdgeInsets.all(12),
+              maxLines: 5,
+              padding: const EdgeInsets.all(16),
               decoration: null,
+              style: const TextStyle(fontSize: 15, height: 1.5),
+              placeholderStyle: const TextStyle(
+                color: CupertinoColors.systemGrey,
+                fontSize: 15,
+              ),
             ),
           ),
         ],
@@ -250,41 +338,78 @@ class _ContactsAlertScreenState extends State<ContactsAlertScreen> {
     );
   }
 
-  Widget _buildSelectAllBar() {
+  Widget _buildStatsCard() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: CupertinoColors.systemGrey6,
-        border: Border(
-          bottom: BorderSide(
-            color: CupertinoColors.systemGrey5,
-            width: 0.5,
-          ),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF9500), Color(0xFFFFB340)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF9500).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            '已选择 ${_selectedContacts.length} / ${_contacts.length} 位联系人',
-            style: const TextStyle(
-              fontSize: 15,
-              color: CupertinoColors.systemGrey,
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              CupertinoIcons.person_2_fill,
+              color: CupertinoColors.white,
+              size: 28,
             ),
           ),
-          CupertinoButton(
-            padding: EdgeInsets.zero,
-            onPressed: () {
-              setState(() {
-                _selectAll = !_selectAll;
-                if (_selectAll) {
-                  _selectedContacts = List.from(_contacts);
-                } else {
-                  _selectedContacts.clear();
-                }
-              });
-            },
-            child: Text(_selectAll ? '取消全选' : '全选'),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '已选择 ${_selectedContacts.length} 位',
+                  style: const TextStyle(
+                    color: CupertinoColors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '共 ${_contacts.length} 位联系人',
+                  style: TextStyle(
+                    color: CupertinoColors.white.withOpacity(0.9),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white.withOpacity(0.25),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '${_contacts.isEmpty ? 0 : ((_selectedContacts.length / _contacts.length) * 100).toInt()}%',
+              style: const TextStyle(
+                color: CupertinoColors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -293,90 +418,154 @@ class _ContactsAlertScreenState extends State<ContactsAlertScreen> {
 
   Widget _buildContactsList() {
     if (_contacts.isEmpty) {
-      return const Center(
-        child: Text(
-          '没有找到联系人',
-          style: TextStyle(color: CupertinoColors.systemGrey),
+      return const SliverFillRemaining(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                CupertinoIcons.person_crop_circle_badge_xmark,
+                size: 64,
+                color: CupertinoColors.systemGrey3,
+              ),
+              SizedBox(height: 16),
+              Text(
+                '没有找到联系人',
+                style: TextStyle(
+                  fontSize: 17,
+                  color: CupertinoColors.systemGrey,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      itemCount: _contacts.length,
-      itemBuilder: (context, index) {
-        final contact = _contacts[index];
-        final isSelected = _selectedContacts.contains(contact);
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final contact = _contacts[index];
+            final isSelected = _selectedContacts.contains(contact);
 
-        return Container(
-          decoration: const BoxDecoration(
-            color: CupertinoColors.white,
-            border: Border(
-              bottom: BorderSide(
-                color: CupertinoColors.systemGrey5,
-                width: 0.5,
-              ),
-            ),
-          ),
-          child: CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            onPressed: () {
-              setState(() {
-                if (isSelected) {
-                  _selectedContacts.remove(contact);
-                } else {
-                  _selectedContacts.add(contact);
-                }
-                _selectAll = _selectedContacts.length == _contacts.length;
-              });
-            },
-            child: Row(
-              children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSelected
-                        ? CupertinoColors.systemBlue
-                        : CupertinoColors.systemGrey5,
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: CupertinoColors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: isSelected
+                    ? Border.all(
+                        color: const Color(0xFFFF9500).withOpacity(0.3),
+                        width: 2,
+                      )
+                    : null,
+                boxShadow: [
+                  BoxShadow(
+                    color: CupertinoColors.systemGrey.withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
                   ),
-                  child: isSelected
-                      ? const Icon(
-                          CupertinoIcons.check_mark,
-                          size: 14,
-                          color: CupertinoColors.white,
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        contact.displayName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: CupertinoColors.black,
+                ],
+              ),
+              child: CupertinoButton(
+                padding: const EdgeInsets.all(16),
+                borderRadius: BorderRadius.circular(14),
+                onPressed: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedContacts.remove(contact);
+                    } else {
+                      _selectedContacts.add(contact);
+                    }
+                    _selectAll = _selectedContacts.length == _contacts.length;
+                  });
+                },
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSelected
+                            ? const Color(0xFFFF9500)
+                            : const Color(0xFFE5E5EA),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFFFF9500)
+                              : CupertinoColors.systemGrey4,
+                          width: isSelected ? 0 : 1.5,
                         ),
                       ),
-                      if (contact.phones.isNotEmpty)
-                        Text(
-                          contact.phones.first.number,
+                      child: isSelected
+                          ? const Icon(
+                              CupertinoIcons.check_mark,
+                              size: 16,
+                              color: CupertinoColors.white,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 16),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF9500).withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          contact.displayName.isNotEmpty
+                              ? contact.displayName[0].toUpperCase()
+                              : '?',
                           style: const TextStyle(
-                            fontSize: 14,
-                            color: CupertinoColors.systemGrey,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFFF9500),
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            contact.displayName,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? CupertinoColors.black
+                                  : CupertinoColors.black,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          if (contact.phones.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                contact.phones.first.number,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: CupertinoColors.systemGrey,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        );
-      },
+              ),
+            );
+          },
+          childCount: _contacts.length,
+        ),
+      ),
     );
   }
 }
