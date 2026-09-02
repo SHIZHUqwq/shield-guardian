@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:installed_apps/app_info.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -182,7 +183,8 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
                 packageName: '',
                 icon: null,
                 versionName: '',
-                versionCode: 0));
+                versionCode: 0,
+                builtWith: BuiltWith.flutter));
 
         // installed_apps doesn't provide permissions directly
         // We'll return empty list for now and rely on permission_handler checks
