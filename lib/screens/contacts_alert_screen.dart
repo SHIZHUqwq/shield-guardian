@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:telephony/telephony.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ContactsAlertScreen extends StatefulWidget {
   const ContactsAlertScreen({Key? key}) : super(key: key);
@@ -107,29 +107,23 @@ class _ContactsAlertScreenState extends State<ContactsAlertScreen> {
       return;
     }
 
-    // 检查短信权限
-    if (!await Permission.sms.request().isGranted) {
-      _showErrorDialog('需要短信权限才能发送消息');
-      return;
-    }
-
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
-        title: const Text('确认发送'),
-        content: Text('即将向${_selectedContacts.length}位联系人发送短信，是否继续？'),
+        title: const Text('发送方式'),
+        content: const Text('将打开短信应用，您可以在那里编辑并发送消息给选中的联系人。'),
         actions: [
           CupertinoDialogAction(
             child: const Text('取消'),
             onPressed: () => Navigator.pop(context),
           ),
           CupertinoDialogAction(
-            isDestructiveAction: true,
+            isDefaultAction: true,
             onPressed: () async {
               Navigator.pop(context);
               await _performSendMessages();
             },
-            child: const Text('发送'),
+            child: const Text('打开短信'),
           ),
         ],
       ),
@@ -137,50 +131,51 @@ class _ContactsAlertScreenState extends State<ContactsAlertScreen> {
   }
 
   Future<void> _performSendMessages() async {
-    setState(() => _isLoading = true);
-
     try {
-      final Telephony telephony = Telephony.instance;
-      int successCount = 0;
-
+      // 构建短信URL
+      List<String> phoneNumbers = [];
       for (var contact in _selectedContacts) {
         if (contact.phones.isNotEmpty) {
-          try {
-            await telephony.sendSms(
-              to: contact.phones.first.number,
-              message: _messageController.text,
-            );
-            successCount++;
-          } catch (e) {
-            // 继续发送下一个
-            continue;
-          }
+          phoneNumbers.add(contact.phones.first.number);
         }
       }
 
-      setState(() => _isLoading = false);
+      if (phoneNumbers.isEmpty) {
+        _showErrorDialog('所选联系人没有电话号码');
+        return;
+      }
 
-      if (mounted) {
-        showCupertinoDialog(
-          context: context,
-          builder: (context) => CupertinoAlertDialog(
-            title: const Text('发送完成'),
-            content: Text('成功向$successCount位联系人发送通知'),
-            actions: [
-              CupertinoDialogAction(
-                child: const Text('确定'),
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        );
+      // 使用SMS URL scheme
+      final String recipients = phoneNumbers.join(',');
+      final String message = Uri.encodeComponent(_messageController.text);
+      final Uri smsUri = Uri.parse('sms:$recipients?body=$message');
+
+      if (await canLaunchUrl(smsUri)) {
+        await launchUrl(smsUri);
+
+        if (mounted) {
+          showCupertinoDialog(
+            context: context,
+            builder: (context) => CupertinoAlertDialog(
+              title: const Text('提示'),
+              content: Text('已打开短信应用，准备向${phoneNumbers.length}位联系人发送通知'),
+              actions: [
+                CupertinoDialogAction(
+                  child: const Text('确定'),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        _showErrorDialog('无法打开短信应用');
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      _showErrorDialog('发送失败: $e');
+      _showErrorDialog('操作失败: $e');
     }
   }
 
