@@ -6,6 +6,7 @@ import 'permission_monitor_screen.dart';
 import 'safe_mode_screen.dart';
 import 'scam_database_screen.dart';
 import 'network_monitor_screen.dart';
+import 'vpn_traffic_monitor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -70,11 +71,19 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 12),
             _buildFeatureCard(
-              icon: CupertinoIcons.antenna_radiowaves_left_right,
-              title: '网络监控',
-              subtitle: '检测应用是否正在传输您的数据',
-              color: CupertinoColors.systemPink,
+              icon: CupertinoIcons.clock_fill,
+              title: '应用使用监控',
+              subtitle: '查看应用运行时间和后台活动',
+              color: CupertinoColors.systemIndigo,
               onTap: () => _navigateTo(const NetworkMonitorScreen()),
+            ),
+            const SizedBox(height: 12),
+            _buildFeatureCard(
+              icon: CupertinoIcons.antenna_radiowaves_left_right,
+              title: '流量监控 (核心)',
+              subtitle: '实时检测应用传输的数据类型',
+              color: CupertinoColors.systemPink,
+              onTap: () => _navigateTo(const VpnTrafficMonitorScreen()),
             ),
             const SizedBox(height: 40),
           ],
