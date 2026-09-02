@@ -440,69 +440,91 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text('安全模式'),
-        backgroundColor: Color(0xF0F9F9F9),
-      ),
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildStatusCard(),
-            const SizedBox(height: 20),
-            _buildFeaturesSection(),
-            const SizedBox(height: 20),
-            _buildQuickActionsSection(),
-          ],
-        ),
+      backgroundColor: const Color(0xFFF2F2F7),
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          CupertinoSliverNavigationBar(
+            backgroundColor: const Color(0xFFF2F2F7),
+            border: null,
+            largeTitle: const Text(
+              '安全模式',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildStatusCard(),
+                  const SizedBox(height: 32),
+                  _buildFeaturesSection(),
+                  const SizedBox(height: 32),
+                  _buildQuickActionsSection(),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStatusCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: _safeModeEnabled
               ? [
-                  CupertinoColors.systemGreen.withOpacity(0.8),
-                  CupertinoColors.systemGreen,
+                  const Color(0xFF34C759),
+                  const Color(0xFF30D158),
                 ]
               : [
-                  CupertinoColors.systemGrey.withOpacity(0.5),
-                  CupertinoColors.systemGrey,
+                  const Color(0xFF8E8E93),
+                  const Color(0xFFAEAEB2),
                 ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: _safeModeEnabled
-                ? CupertinoColors.systemGreen.withOpacity(0.3)
-                : CupertinoColors.systemGrey.withOpacity(0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: (_safeModeEnabled ? const Color(0xFF34C759) : const Color(0xFF8E8E93)).withOpacity(0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         children: [
-          Icon(
-            _safeModeEnabled
-                ? CupertinoIcons.shield_fill
-                : CupertinoIcons.shield_slash_fill,
-            size: 64,
-            color: CupertinoColors.white,
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white.withOpacity(0.25),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _safeModeEnabled
+                  ? CupertinoIcons.shield_fill
+                  : CupertinoIcons.shield_slash_fill,
+              size: 56,
+              color: CupertinoColors.white,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
             _safeModeEnabled ? '安全模式已启用' : '安全模式已关闭',
             style: const TextStyle(
-              fontSize: 22,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
               color: CupertinoColors.white,
+              letterSpacing: -0.3,
             ),
           ),
           const SizedBox(height: 8),
@@ -510,20 +532,28 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
             _safeModeEnabled
                 ? '您的设备正在受到保护'
                 : '启用安全模式以获得更好的保护',
-            style: const TextStyle(
-              fontSize: 14,
-              color: CupertinoColors.white,
+            style: TextStyle(
+              fontSize: 15,
+              color: CupertinoColors.white.withOpacity(0.9),
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           if (_isLoading)
             const CupertinoActivityIndicator(color: CupertinoColors.white)
           else
-            CupertinoSwitch(
-              value: _safeModeEnabled,
-              onChanged: _toggleSafeMode,
-              activeColor: CupertinoColors.white,
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: CupertinoColors.white.withOpacity(0.25),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: CupertinoSwitch(
+                value: _safeModeEnabled,
+                onChanged: _toggleSafeMode,
+                activeColor: CupertinoColors.white,
+                trackColor: CupertinoColors.white.withOpacity(0.3),
+              ),
             ),
         ],
       ),
@@ -537,11 +567,12 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
         const Text(
           '安全功能',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
+            letterSpacing: -0.3,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _buildFeatureCard(
           icon: CupertinoIcons.app_badge,
           title: '应用安装保护',
@@ -573,36 +604,43 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
     required bool enabled,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: enabled
-              ? CupertinoColors.systemGreen.withOpacity(0.3)
-              : CupertinoColors.systemGrey5,
-          width: 1,
+              ? const Color(0xFF34C759).withOpacity(0.3)
+              : const Color(0xFFE5E5EA),
+          width: 2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: enabled
-                  ? CupertinoColors.systemGreen.withOpacity(0.1)
-                  : CupertinoColors.systemGrey6,
-              borderRadius: BorderRadius.circular(10),
+                  ? const Color(0xFF34C759).withOpacity(0.15)
+                  : const Color(0xFFF2F2F7),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
               color: enabled
-                  ? CupertinoColors.systemGreen
+                  ? const Color(0xFF34C759)
                   : CupertinoColors.systemGrey,
-              size: 24,
+              size: 28,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -610,25 +648,27 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.3,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
                   style: const TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: CupertinoColors.systemGrey,
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 12),
           Icon(
             enabled ? CupertinoIcons.check_mark_circled_solid : CupertinoIcons.circle,
-            color: enabled ? CupertinoColors.systemGreen : CupertinoColors.systemGrey3,
-            size: 24,
+            color: enabled ? const Color(0xFF34C759) : CupertinoColors.systemGrey4,
+            size: 28,
           ),
         ],
       ),
@@ -642,41 +682,58 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
         const Text(
           '快捷操作',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
+            letterSpacing: -0.3,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: _safeModeEnabled ? _showProtectionChecklist : null,
           child: Container(
-            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: _safeModeEnabled
-                  ? CupertinoColors.systemBlue
-                  : CupertinoColors.systemGrey5,
-              borderRadius: BorderRadius.circular(12),
+              gradient: _safeModeEnabled
+                  ? const LinearGradient(
+                      colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: _safeModeEnabled ? null : const Color(0xFFE5E5EA),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: _safeModeEnabled
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF007AFF).withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                  : null,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  CupertinoIcons.checkmark_shield,
+                  CupertinoIcons.checkmark_shield_fill,
                   color: _safeModeEnabled
                       ? CupertinoColors.white
                       : CupertinoColors.systemGrey,
-                  size: 20,
+                  size: 24,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Text(
                   '查看安全保护清单',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
                     color: _safeModeEnabled
                         ? CupertinoColors.white
                         : CupertinoColors.systemGrey,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ],
