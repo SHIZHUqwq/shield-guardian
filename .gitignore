@@ -1,0 +1,53 @@
+# Flutter相关
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+flutter_*.png
+
+# Android相关
+*.iml
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# Android Studio
+.idea/
+*.iws
+/out/
+.gradle/
+local.properties
+
+# IntelliJ
+*.ipr
+*.iws
+.idea/
+
+# Visual Studio Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# 密钥文件
+*.jks
+*.keystore
+key.properties
+
+# 临时文件
+*.tmp
+*.temp
+*.bak

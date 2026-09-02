@@ -1,0 +1,30 @@
+name: shield_guardian
+description: 个人数据泄露应急助手 - 帮助用户在数据泄露后快速响应和防护
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  permission_handler: ^11.0.1
+  shared_preferences: ^2.2.2
+  url_launcher: ^6.2.1
+  package_info_plus: ^5.0.1
+  device_info_plus: ^9.1.1
+  flutter_contacts: ^1.1.7
+  sms_maintained: ^0.2.4
+  flutter_sms: ^2.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
