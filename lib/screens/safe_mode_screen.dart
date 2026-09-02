@@ -1,7 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
 
 class SafeModeScreen extends StatefulWidget {
   const SafeModeScreen({Key? key}) : super(key: key);
@@ -13,11 +14,6 @@ class SafeModeScreen extends StatefulWidget {
 class _SafeModeScreenState extends State<SafeModeScreen> {
   bool _safeModeEnabled = false;
   bool _isLoading = false;
-  Map<String, bool> _protectionStatus = {
-    'unknownSources': false,
-    'permissions': false,
-    'settings': false,
-  };
 
   @override
   void initState() {
@@ -47,9 +43,10 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
         title: const Text('启用安全模式'),
         content: const Text(
           '安全模式将帮助您：\n\n'
-          '1. 限制未知来源应用安装\n'
-          '2. 检查并提示撤销危险权限\n'
+          '1. 引导限制未知来源应用安装\n'
+          '2. 引导检查并撤销危险权限\n'
           '3. 提供系统安全设置快捷入口\n\n'
+          '注意：由于Android系统限制，我们无法自动修改系统设置，但会引导您手动完成\n\n'
           '是否继续？',
         ),
         actions: [
@@ -143,7 +140,7 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
     showCupertinoModalPopup(
       context: context,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
+        height: MediaQuery.of(context).size.height * 0.7,
         decoration: const BoxDecoration(
           color: CupertinoColors.white,
           borderRadius: BorderRadius.only(
@@ -191,31 +188,64 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
                       title: '限制未知来源安装',
                       description: '防止从非官方渠道安装恶意应用',
                       actionText: '去设置',
-                      onPressed: () async {
+                      onPressed: () {
                         Navigator.pop(context);
-                        await openAppSettings();
+                        _openUnknownSourcesSettings();
                       },
                     ),
                     const SizedBox(height: 16),
                     _buildProtectionItem(
                       icon: CupertinoIcons.lock_shield,
                       title: '检查应用权限',
-                      description: '撤销可疑应用的敏感权限',
-                      actionText: '检查权限',
+                      description: '撤销可疑应用的敏感权限（通讯录、位置等）',
+                      actionText: '权限管理',
                       onPressed: () {
                         Navigator.pop(context);
-                        Navigator.pushNamed(context, '/permissions');
+                        _openPermissionSettings();
                       },
                     ),
                     const SizedBox(height: 16),
                     _buildProtectionItem(
-                      icon: CupertinoIcons.settings,
-                      title: '系统安全设置',
-                      description: '查看和优化系统安全选项',
-                      actionText: '打开设置',
-                      onPressed: () async {
+                      icon: CupertinoIcons.lock_fill,
+                      title: '应用锁定',
+                      description: '为敏感应用设置密码或指纹保护',
+                      actionText: '安全中心',
+                      onPressed: () {
                         Navigator.pop(context);
-                        await openAppSettings();
+                        _openSecuritySettings();
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildProtectionItem(
+                      icon: CupertinoIcons.wifi,
+                      title: '网络安全',
+                      description: '检查WiFi和网络连接安全性',
+                      actionText: '网络设置',
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _openWifiSettings();
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildProtectionItem(
+                      icon: CupertinoIcons.location_fill,
+                      title: '位置权限',
+                      description: '管理应用的位置访问权限',
+                      actionText: '位置设置',
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _openLocationSettings();
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildProtectionItem(
+                      icon: CupertinoIcons.doc_text_search,
+                      title: '系统更新',
+                      description: '保持系统安全补丁为最新版本',
+                      actionText: '检查更新',
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _openSystemUpdateSettings();
                       },
                     ),
                   ],
@@ -226,6 +256,82 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openUnknownSourcesSettings() async {
+    try {
+      if (Platform.isAndroid) {
+        // Android 8.0+: 每个应用单独的未知来源权限
+        final uri = Uri.parse('android.settings.MANAGE_UNKNOWN_APP_SOURCES');
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          // 降级到旧版设置
+          final fallbackUri = Uri.parse('android.settings.SECURITY_SETTINGS');
+          await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+        }
+      }
+    } catch (e) {
+      _showError('无法打开设置，请手动进入：设置 > 安全 > 未知来源');
+    }
+  }
+
+  Future<void> _openPermissionSettings() async {
+    try {
+      final uri = Uri.parse('android.settings.MANAGE_APPLICATIONS_SETTINGS');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      _showError('无法打开设置');
+    }
+  }
+
+  Future<void> _openSecuritySettings() async {
+    try {
+      final uri = Uri.parse('android.settings.SECURITY_SETTINGS');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      _showError('无法打开设置');
+    }
+  }
+
+  Future<void> _openWifiSettings() async {
+    try {
+      final uri = Uri.parse('android.settings.WIFI_SETTINGS');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      _showError('无法打开设置');
+    }
+  }
+
+  Future<void> _openLocationSettings() async {
+    try {
+      final uri = Uri.parse('android.settings.LOCATION_SOURCE_SETTINGS');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      _showError('无法打开设置');
+    }
+  }
+
+  Future<void> _openSystemUpdateSettings() async {
+    try {
+      final uri = Uri.parse('android.settings.SYSTEM_UPDATE_SETTINGS');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        final fallbackUri = Uri.parse('android.settings.SETTINGS');
+        await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      _showError('无法打开设置');
+    }
   }
 
   Widget _buildProtectionItem({
@@ -241,56 +347,56 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
         color: CupertinoColors.systemGrey6,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              color: CupertinoColors.systemBlue,
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: CupertinoColors.systemGrey,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                CupertinoButton(
-                  color: CupertinoColors.systemBlue,
-                  borderRadius: BorderRadius.circular(8),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  minSize: 0,
-                  onPressed: onPressed,
-                  child: Text(
-                    actionText,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                child: Icon(icon, color: CupertinoColors.systemBlue, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: CupertinoColors.systemGrey,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            color: CupertinoColors.systemBlue,
+            borderRadius: BorderRadius.circular(8),
+            onPressed: onPressed,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(CupertinoIcons.arrow_right_circle, size: 16),
+                const SizedBox(width: 6),
+                Text(actionText, style: const TextStyle(fontSize: 14)),
               ],
             ),
           ),
@@ -315,6 +421,22 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
     );
   }
 
+  void _showError(String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('提示'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('确定'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
@@ -327,14 +449,10 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             _buildStatusCard(),
-            const SizedBox(height: 24),
-            _buildToggleCard(),
-            const SizedBox(height: 24),
-            _buildProtectionFeatures(),
-            const SizedBox(height: 24),
-            _buildQuickActions(),
-            const SizedBox(height: 24),
-            _buildSecurityTips(),
+            const SizedBox(height: 20),
+            _buildFeaturesSection(),
+            const SizedBox(height: 20),
+            _buildQuickActionsSection(),
           ],
         ),
       ),
@@ -343,17 +461,17 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
 
   Widget _buildStatusCard() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: _safeModeEnabled
               ? [
-                  const Color(0xFF34C759),
-                  const Color(0xFF30D158),
+                  CupertinoColors.systemGreen.withOpacity(0.8),
+                  CupertinoColors.systemGreen,
                 ]
               : [
-                  const Color(0xFF8E8E93),
-                  const Color(0xFFAEAEB2),
+                  CupertinoColors.systemGrey.withOpacity(0.5),
+                  CupertinoColors.systemGrey,
                 ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -361,10 +479,9 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: (_safeModeEnabled
-                    ? CupertinoColors.systemGreen
-                    : CupertinoColors.systemGrey)
-                .withOpacity(0.3),
+            color: _safeModeEnabled
+                ? CupertinoColors.systemGreen.withOpacity(0.3)
+                : CupertinoColors.systemGrey.withOpacity(0.2),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -374,123 +491,76 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
         children: [
           Icon(
             _safeModeEnabled
-                ? CupertinoIcons.lock_shield_fill
-                : CupertinoIcons.lock_slash_fill,
-            size: 56,
+                ? CupertinoIcons.shield_fill
+                : CupertinoIcons.shield_slash_fill,
+            size: 64,
             color: CupertinoColors.white,
           ),
           const SizedBox(height: 16),
           Text(
-            _safeModeEnabled ? '安全模式已启用' : '安全模式未启用',
+            _safeModeEnabled ? '安全模式已启用' : '安全模式已关闭',
             style: const TextStyle(
-              color: CupertinoColors.white,
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
+              color: CupertinoColors.white,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             _safeModeEnabled
                 ? '您的设备正在受到保护'
-                : '启用后可增强设备安全性',
+                : '启用安全模式以获得更好的保护',
             style: const TextStyle(
-              color: Color(0xFFE5E5EA),
-              fontSize: 15,
+              fontSize: 14,
+              color: CupertinoColors.white,
             ),
+            textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 20),
+          if (_isLoading)
+            const CupertinoActivityIndicator(color: CupertinoColors.white)
+          else
+            CupertinoSwitch(
+              value: _safeModeEnabled,
+              onChanged: _toggleSafeMode,
+              activeColor: CupertinoColors.white,
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildToggleCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '启用安全模式',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  '提供系统安全保护和权限管理',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: CupertinoColors.systemGrey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _isLoading
-              ? const CupertinoActivityIndicator()
-              : CupertinoSwitch(
-                  value: _safeModeEnabled,
-                  onChanged: _toggleSafeMode,
-                ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProtectionFeatures() {
+  Widget _buildFeaturesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '保护功能',
+          '安全功能',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _buildFeatureCard(
           icon: CupertinoIcons.app_badge,
           title: '应用安装保护',
-          description: '引导您限制从未知来源安装应用',
-          color: CupertinoColors.systemBlue,
+          description: '引导限制未知来源应用的安装',
+          enabled: _safeModeEnabled,
         ),
         const SizedBox(height: 12),
         _buildFeatureCard(
-          icon: CupertinoIcons.eye_fill,
-          title: '权限监控提醒',
-          description: '持续检查应用权限并提供撤销建议',
-          color: CupertinoColors.systemOrange,
+          icon: CupertinoIcons.lock_shield,
+          title: '权限监控',
+          description: '帮助检查和管理应用权限',
+          enabled: _safeModeEnabled,
         ),
         const SizedBox(height: 12),
         _buildFeatureCard(
-          icon: CupertinoIcons.hand_raised_fill,
-          title: '快速安全操作',
-          description: '一键访问关键系统安全设置',
-          color: CupertinoColors.systemGreen,
-        ),
-        const SizedBox(height: 12),
-        _buildFeatureCard(
-          icon: CupertinoIcons.bell_fill,
-          title: '安全提醒通知',
-          description: '定期提醒您检查设备安全状态',
-          color: CupertinoColors.systemPurple,
+          icon: CupertinoIcons.checkmark_shield,
+          title: '安全引导',
+          description: '提供系统安全设置的快捷入口',
+          enabled: _safeModeEnabled,
         ),
       ],
     );
@@ -500,33 +570,35 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
     required IconData icon,
     required String title,
     required String description,
-    required Color color,
+    required bool enabled,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: CupertinoColors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: enabled
+              ? CupertinoColors.systemGreen.withOpacity(0.3)
+              : CupertinoColors.systemGrey5,
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: enabled
+                  ? CupertinoColors.systemGreen.withOpacity(0.1)
+                  : CupertinoColors.systemGrey6,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
-              color: color,
+              color: enabled
+                  ? CupertinoColors.systemGreen
+                  : CupertinoColors.systemGrey,
               size: 24,
             ),
           ),
@@ -539,142 +611,79 @@ class _SafeModeScreenState extends State<SafeModeScreen> {
                   title,
                   style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: CupertinoColors.systemGrey,
                   ),
                 ),
               ],
             ),
           ),
+          Icon(
+            enabled ? CupertinoIcons.check_mark_circled_solid : CupertinoIcons.circle,
+            color: enabled ? CupertinoColors.systemGreen : CupertinoColors.systemGrey3,
+            size: 24,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActions() {
+  Widget _buildQuickActionsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '快速操作',
+          '快捷操作',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: CupertinoButton(
-            color: CupertinoColors.systemBlue,
-            borderRadius: BorderRadius.circular(12),
-            onPressed: () => openAppSettings(),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(CupertinoIcons.settings, size: 20),
-                SizedBox(width: 8),
-                Text('打开系统安全设置'),
-              ],
-            ),
-          ),
-        ),
         const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: CupertinoButton(
-            color: CupertinoColors.systemGreen,
-            borderRadius: BorderRadius.circular(12),
-            onPressed: _showProtectionChecklist,
-            child: const Row(
+        CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: _safeModeEnabled ? _showProtectionChecklist : null,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _safeModeEnabled
+                  ? CupertinoColors.systemBlue
+                  : CupertinoColors.systemGrey5,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(CupertinoIcons.checkmark_shield, size: 20),
-                SizedBox(width: 8),
-                Text('查看保护清单'),
+                Icon(
+                  CupertinoIcons.checkmark_shield,
+                  color: _safeModeEnabled
+                      ? CupertinoColors.white
+                      : CupertinoColors.systemGrey,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '查看安全保护清单',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: _safeModeEnabled
+                        ? CupertinoColors.white
+                        : CupertinoColors.systemGrey,
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSecurityTips() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: CupertinoColors.systemBlue.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: CupertinoColors.systemBlue.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                CupertinoIcons.lightbulb_fill,
-                color: CupertinoColors.systemBlue,
-                size: 24,
-              ),
-              SizedBox(width: 8),
-              Text(
-                '安全建议',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: CupertinoColors.systemBlue,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildTipItem('定期检查已安装应用列表'),
-          _buildTipItem('只从官方应用商店下载应用'),
-          _buildTipItem('仔细查看应用权限申请理由'),
-          _buildTipItem('及时更新系统和应用版本'),
-          _buildTipItem('不要随意开启"无障碍服务"'),
-          _buildTipItem('启用设备锁屏密码或生物识别'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTipItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            CupertinoIcons.checkmark_circle_fill,
-            size: 16,
-            color: CupertinoColors.systemBlue,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 14,
-                color: CupertinoColors.black,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
