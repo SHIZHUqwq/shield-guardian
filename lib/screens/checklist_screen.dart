@@ -341,19 +341,142 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final completedCount = _checkedItems.values.where((v) => v).length;
+    final progress = _items.isEmpty ? 0.0 : completedCount / _items.length;
+
     return CupertinoPageScaffold(
-      navigationBar: const CupertinoNavigationBar(
-        middle: Text('应急检查清单'),
-        backgroundColor: Color(0xF0F9F9F9),
+      backgroundColor: const Color(0xFFF2F2F7),
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          CupertinoSliverNavigationBar(
+            backgroundColor: const Color(0xFFF2F2F7),
+            border: null,
+            largeTitle: const Text(
+              '应急检查清单',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
+            ),
+            trailing: Text(
+              '$completedCount/${_items.length}',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                color: CupertinoColors.systemGrey,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: _buildProgressCard(progress, completedCount),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.all(20),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildChecklistItem(_items[index], index),
+                childCount: _items.length,
+              ),
+            ),
+          ),
+        ],
       ),
-      child: SafeArea(
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: _items.length,
-          itemBuilder: (context, index) {
-            return _buildChecklistItem(_items[index], index);
-          },
+    );
+  }
+
+  Widget _buildProgressCard(double progress, int completedCount) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: progress == 1.0
+              ? [const Color(0xFF34C759), const Color(0xFF5DD57C)]
+              : [const Color(0xFF007AFF), const Color(0xFF5856D6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: (progress == 1.0
+                    ? const Color(0xFF34C759)
+                    : const Color(0xFF007AFF))
+                .withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.white.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  progress == 1.0
+                      ? CupertinoIcons.check_mark_circled_solid
+                      : CupertinoIcons.list_bullet_below_rectangle,
+                  color: CupertinoColors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  progress == 1.0 ? '全部完成！' : '应急响应进度',
+                  style: const TextStyle(
+                    color: CupertinoColors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ),
+              Text(
+                '${(progress * 100).toInt()}%',
+                style: const TextStyle(
+                  color: CupertinoColors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: CupertinoColors.white.withOpacity(0.3),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                CupertinoColors.white,
+              ),
+              minHeight: 8,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            progress == 1.0
+                ? '太棒了！您已完成所有关键步骤'
+                : '还有 ${_items.length - completedCount} 项待完成',
+            style: TextStyle(
+              color: CupertinoColors.white.withOpacity(0.9),
+              fontSize: 14,
+              height: 1.3,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -362,109 +485,187 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     final isChecked = _checkedItems[index] ?? false;
     Color priorityColor;
     IconData priorityIcon;
+    String priorityLabel;
 
     switch (item.priority) {
       case 'critical':
         priorityColor = CupertinoColors.systemRed;
-        priorityIcon = CupertinoIcons.exclamationmark_circle_fill;
+        priorityIcon = CupertinoIcons.flame_fill;
+        priorityLabel = '紧急';
         break;
       case 'high':
         priorityColor = CupertinoColors.systemOrange;
         priorityIcon = CupertinoIcons.exclamationmark_triangle_fill;
+        priorityLabel = '重要';
         break;
       case 'medium':
         priorityColor = CupertinoColors.systemYellow;
         priorityIcon = CupertinoIcons.info_circle_fill;
+        priorityLabel = '中等';
         break;
       default:
         priorityColor = CupertinoColors.systemGrey;
         priorityIcon = CupertinoIcons.circle_fill;
+        priorityLabel = '一般';
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isChecked
-              ? CupertinoColors.systemGreen.withOpacity(0.3)
-              : priorityColor.withOpacity(0.3),
-          width: 2,
-        ),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: isChecked
+                ? CupertinoColors.systemGreen.withOpacity(0.15)
+                : CupertinoColors.systemGrey.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          CupertinoListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isChecked
-                    ? CupertinoColors.systemGreen.withOpacity(0.1)
-                    : priorityColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                isChecked ? CupertinoIcons.check_mark : priorityIcon,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
                 color: isChecked ? CupertinoColors.systemGreen : priorityColor,
-                size: 24,
+                width: 4,
               ),
-            ),
-            title: Text(
-              item.title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                decoration: isChecked ? TextDecoration.lineThrough : null,
-                color: isChecked ? CupertinoColors.systemGrey : null,
-              ),
-            ),
-            subtitle: Text(
-              item.description,
-              style: TextStyle(
-                fontSize: 13,
-                color: isChecked
-                    ? CupertinoColors.systemGrey
-                    : CupertinoColors.systemGrey2,
-              ),
-            ),
-            trailing: CupertinoSwitch(
-              value: isChecked,
-              onChanged: (value) {
-                setState(() {
-                  _checkedItems[index] = value;
-                });
-                _saveCheckedStatus(index, value);
-              },
             ),
           ),
-          if (item.actionType != ChecklistActionType.none)
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                color: priorityColor,
-                borderRadius: BorderRadius.circular(8),
-                onPressed: () => _executeAction(item),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Icon(CupertinoIcons.arrow_right_circle, size: 18),
-                    SizedBox(width: 6),
-                    Text('立即操作', style: TextStyle(fontSize: 14)),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: isChecked
+                            ? CupertinoColors.systemGreen.withOpacity(0.15)
+                            : priorityColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        isChecked ? CupertinoIcons.check_mark_circle_fill : priorityIcon,
+                        color: isChecked ? CupertinoColors.systemGreen : priorityColor,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.title,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
+                                    color: isChecked
+                                        ? CupertinoColors.systemGrey
+                                        : CupertinoColors.black,
+                                    decoration: isChecked
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ),
+                              if (!isChecked)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: priorityColor.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    priorityLabel,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: priorityColor,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            item.description,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isChecked
+                                  ? CupertinoColors.systemGrey2
+                                  : CupertinoColors.systemGrey,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Transform.scale(
+                      scale: 0.85,
+                      child: CupertinoSwitch(
+                        value: isChecked,
+                        activeColor: CupertinoColors.systemGreen,
+                        onChanged: (value) {
+                          setState(() {
+                            _checkedItems[index] = value;
+                          });
+                          _saveCheckedStatus(index, value);
+                        },
+                      ),
+                    ),
                   ],
                 ),
-              ),
+                if (item.actionType != ChecklistActionType.none && !isChecked)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: CupertinoButton(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        color: priorityColor,
+                        borderRadius: BorderRadius.circular(10),
+                        onPressed: () => _executeAction(item),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              CupertinoIcons.arrow_right_circle_fill,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              '立即操作',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
