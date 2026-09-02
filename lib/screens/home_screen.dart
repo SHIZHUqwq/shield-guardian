@@ -5,6 +5,7 @@ import 'contacts_alert_screen.dart';
 import 'permission_monitor_screen.dart';
 import 'safe_mode_screen.dart';
 import 'scam_database_screen.dart';
+import 'network_monitor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -62,10 +63,18 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             _buildFeatureCard(
               icon: CupertinoIcons.exclamationmark_triangle_fill,
-              title: '诈骗数据库',
-              subtitle: '查询和提交诈骗应用信息',
+              title: '应用安全扫描',
+              subtitle: '扫描手机应用，识别可疑软件',
               color: CupertinoColors.systemPurple,
               onTap: () => _navigateTo(const ScamDatabaseScreen()),
+            ),
+            const SizedBox(height: 12),
+            _buildFeatureCard(
+              icon: CupertinoIcons.antenna_radiowaves_left_right,
+              title: '网络监控',
+              subtitle: '检测应用是否正在传输您的数据',
+              color: CupertinoColors.systemPink,
+              onTap: () => _navigateTo(const NetworkMonitorScreen()),
             ),
             const SizedBox(height: 40),
           ],

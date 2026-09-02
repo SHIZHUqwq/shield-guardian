@@ -1,0 +1,65 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 渐变背景 -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#007AFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5856D6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E8E8E8;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- 圆角矩形背景 -->
+  <rect width="512" height="512" rx="115" ry="115" fill="url(#bgGradient)"/>
+
+  <!-- 盾牌外形 -->
+  <path d="M 256 80
+           C 200 80 150 90 150 90
+           L 150 240
+           C 150 340 256 420 256 420
+           C 256 420 362 340 362 240
+           L 362 90
+           C 362 90 312 80 256 80 Z"
+        fill="url(#shieldGradient)"
+        filter="url(#shadow)"
+        opacity="0.95"/>
+
+  <!-- 盾牌轮廓 -->
+  <path d="M 256 80
+           C 200 80 150 90 150 90
+           L 150 240
+           C 150 340 256 420 256 420
+           C 256 420 362 340 362 240
+           L 362 90
+           C 362 90 312 80 256 80 Z"
+        fill="none"
+        stroke="#007AFF"
+        stroke-width="4"/>
+
+  <!-- 对勾符号 -->
+  <path d="M 210 240 L 240 280 L 310 180"
+        fill="none"
+        stroke="#007AFF"
+        stroke-width="24"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- 锁的装饰 -->
+  <circle cx="256" cy="320" r="30" fill="#007AFF" opacity="0.3"/>
+  <rect x="241" y="310" width="30" height="40" rx="4" fill="#007AFF" opacity="0.3"/>
+
+  <!-- 小盾牌装饰（左上） -->
+  <path d="M 100 120 L 100 160 C 100 180 120 190 120 190 C 120 190 140 180 140 160 L 140 120 C 130 118 120 118 100 120 Z"
+        fill="#FFFFFF"
+        opacity="0.2"/>
+
+  <!-- 小盾牌装饰（右上） -->
+  <path d="M 372 120 L 372 160 C 372 180 392 190 392 190 C 392 190 412 180 412 160 L 412 120 C 402 118 392 118 372 120 Z"
+        fill="#FFFFFF"
+        opacity="0.2"/>
+</svg>

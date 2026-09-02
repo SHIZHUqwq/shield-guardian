@@ -19,11 +19,21 @@ dependencies:
   share_plus: ^7.2.1
   installed_apps: ^1.4.0
   path_provider: ^2.1.1
+  app_usage: ^2.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
+
+# App图标配置
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#007AFF"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
