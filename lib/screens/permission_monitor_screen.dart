@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:device_apps/device_apps.dart';
+import 'dart:io';
 
 class PermissionMonitorScreen extends StatefulWidget {
   const PermissionMonitorScreen({Key? key}) : super(key: key);
@@ -13,116 +13,326 @@ class PermissionMonitorScreen extends StatefulWidget {
 
 class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
   bool _isLoading = false;
-  Map<String, PermissionStatus> _permissions = {};
+  List<AppPermissionInfo> _appList = [];
+  List<AppPermissionInfo> _filteredAppList = [];
+  String _sortBy = 'risk';
+  final TextEditingController _searchController = TextEditingController();
 
-  final List<PermissionInfo> _dangerousPermissions = [
-    PermissionInfo(
-      permission: Permission.contacts,
-      name: '通讯录',
+  final Map<String, PermissionDetails> _dangerousPermissions = {
+    'android.permission.READ_CONTACTS': PermissionDetails(
+      name: '读取通讯录',
       icon: CupertinoIcons.person_2_fill,
-      description: '访问您的联系人信息',
+      riskScore: 10,
       riskLevel: 'high',
     ),
-    PermissionInfo(
-      permission: Permission.sms,
-      name: '短信',
+    'android.permission.WRITE_CONTACTS': PermissionDetails(
+      name: '修改通讯录',
+      icon: CupertinoIcons.person_2_fill,
+      riskScore: 10,
+      riskLevel: 'high',
+    ),
+    'android.permission.READ_SMS': PermissionDetails(
+      name: '读取短信',
       icon: CupertinoIcons.chat_bubble_2_fill,
-      description: '读取和发送短信',
+      riskScore: 10,
       riskLevel: 'high',
     ),
-    PermissionInfo(
-      permission: Permission.phone,
-      name: '电话',
+    'android.permission.SEND_SMS': PermissionDetails(
+      name: '发送短信',
+      icon: CupertinoIcons.chat_bubble_2_fill,
+      riskScore: 10,
+      riskLevel: 'high',
+    ),
+    'android.permission.RECEIVE_SMS': PermissionDetails(
+      name: '接收短信',
+      icon: CupertinoIcons.chat_bubble_2_fill,
+      riskScore: 10,
+      riskLevel: 'high',
+    ),
+    'android.permission.READ_PHONE_STATE': PermissionDetails(
+      name: '读取电话状态',
       icon: CupertinoIcons.phone_fill,
-      description: '拨打电话和访问通话记录',
+      riskScore: 10,
       riskLevel: 'high',
     ),
-    PermissionInfo(
-      permission: Permission.location,
-      name: '位置信息',
+    'android.permission.CALL_PHONE': PermissionDetails(
+      name: '拨打电话',
+      icon: CupertinoIcons.phone_fill,
+      riskScore: 10,
+      riskLevel: 'high',
+    ),
+    'android.permission.READ_CALL_LOG': PermissionDetails(
+      name: '读取通话记录',
+      icon: CupertinoIcons.phone_fill,
+      riskScore: 10,
+      riskLevel: 'high',
+    ),
+    'android.permission.ACCESS_FINE_LOCATION': PermissionDetails(
+      name: '精确位置',
       icon: CupertinoIcons.location_fill,
-      description: '访问您的地理位置',
+      riskScore: 5,
       riskLevel: 'medium',
     ),
-    PermissionInfo(
-      permission: Permission.camera,
+    'android.permission.ACCESS_COARSE_LOCATION': PermissionDetails(
+      name: '大致位置',
+      icon: CupertinoIcons.location_fill,
+      riskScore: 5,
+      riskLevel: 'medium',
+    ),
+    'android.permission.CAMERA': PermissionDetails(
       name: '相机',
       icon: CupertinoIcons.camera_fill,
-      description: '拍摄照片和视频',
+      riskScore: 5,
       riskLevel: 'medium',
     ),
-    PermissionInfo(
-      permission: Permission.microphone,
+    'android.permission.RECORD_AUDIO': PermissionDetails(
       name: '麦克风',
       icon: CupertinoIcons.mic_fill,
-      description: '录制音频',
+      riskScore: 5,
       riskLevel: 'medium',
     ),
-    PermissionInfo(
-      permission: Permission.storage,
-      name: '存储空间',
+    'android.permission.READ_EXTERNAL_STORAGE': PermissionDetails(
+      name: '读取存储',
       icon: CupertinoIcons.folder_fill,
-      description: '读取和写入文件',
+      riskScore: 1,
       riskLevel: 'low',
     ),
-    PermissionInfo(
-      permission: Permission.calendar,
-      name: '日历',
+    'android.permission.WRITE_EXTERNAL_STORAGE': PermissionDetails(
+      name: '写入存储',
+      icon: CupertinoIcons.folder_fill,
+      riskScore: 1,
+      riskLevel: 'low',
+    ),
+    'android.permission.READ_CALENDAR': PermissionDetails(
+      name: '读取日历',
       icon: CupertinoIcons.calendar,
-      description: '访问日历事件',
+      riskScore: 1,
       riskLevel: 'low',
     ),
-  ];
+    'android.permission.WRITE_CALENDAR': PermissionDetails(
+      name: '写入日历',
+      icon: CupertinoIcons.calendar,
+      riskScore: 1,
+      riskLevel: 'low',
+    ),
+  };
 
   @override
   void initState() {
     super.initState();
-    _checkPermissions();
+    _loadInstalledApps();
   }
 
-  Future<void> _checkPermissions() async {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadInstalledApps() async {
     setState(() => _isLoading = true);
 
-    Map<String, PermissionStatus> statuses = {};
+    try {
+      final apps = await DeviceApps.getInstalledApplications(
+        includeAppIcons: true,
+        includeSystemApps: true,
+        onlyAppsWithLaunchIntent: false,
+      );
 
-    for (var permInfo in _dangerousPermissions) {
-      try {
-        statuses[permInfo.name] = await permInfo.permission.status;
-      } catch (e) {
-        statuses[permInfo.name] = PermissionStatus.denied;
+      List<AppPermissionInfo> appInfoList = [];
+
+      for (var app in apps) {
+        if (app is ApplicationWithIcon) {
+          final permissions = await _getAppPermissions(app.packageName);
+          final dangerousPerms = _filterDangerousPermissions(permissions);
+
+          if (dangerousPerms.isNotEmpty) {
+            final riskScore = _calculateRiskScore(dangerousPerms);
+            appInfoList.add(AppPermissionInfo(
+              name: app.appName,
+              packageName: app.packageName,
+              icon: app.icon,
+              permissions: dangerousPerms,
+              riskScore: riskScore,
+            ));
+          }
+        }
+      }
+
+      appInfoList.sort((a, b) => b.riskScore.compareTo(a.riskScore));
+
+      setState(() {
+        _appList = appInfoList;
+        _filteredAppList = appInfoList;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        _showError('加载应用列表失败: $e');
       }
     }
+  }
 
+  Future<List<String>> _getAppPermissions(String packageName) async {
+    try {
+      if (Platform.isAndroid) {
+        return await DeviceApps.getAppPermissions(packageName) ?? [];
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+    return [];
+  }
+
+  List<String> _filterDangerousPermissions(List<String> permissions) {
+    return permissions
+        .where((perm) => _dangerousPermissions.containsKey(perm))
+        .toList();
+  }
+
+  int _calculateRiskScore(List<String> permissions) {
+    int score = 0;
+    for (var perm in permissions) {
+      final details = _dangerousPermissions[perm];
+      if (details != null) {
+        score += details.riskScore;
+      }
+    }
+    return score;
+  }
+
+  void _filterApps(String query) {
     setState(() {
-      _permissions = statuses;
-      _isLoading = false;
+      if (query.isEmpty) {
+        _filteredAppList = _appList;
+      } else {
+        _filteredAppList = _appList
+            .where((app) =>
+                app.name.toLowerCase().contains(query.toLowerCase()) ||
+                app.packageName.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+      _sortApps();
     });
+  }
+
+  void _sortApps() {
+    setState(() {
+      if (_sortBy == 'risk') {
+        _filteredAppList.sort((a, b) => b.riskScore.compareTo(a.riskScore));
+      } else if (_sortBy == 'name') {
+        _filteredAppList.sort((a, b) => a.name.compareTo(b.name));
+      } else if (_sortBy == 'permissions') {
+        _filteredAppList.sort((a, b) => b.permissions.length.compareTo(a.permissions.length));
+      }
+    });
+  }
+
+  void _showError(String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('错误'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('确定'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openAppSettings(String packageName) async {
+    try {
+      await DeviceApps.openAppSettings(packageName);
+    } catch (e) {
+      _showError('无法打开应用设置');
+    }
+  }
+
+  void _showSortOptions() {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: const Text('排序方式'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _sortBy = 'risk';
+                _sortApps();
+              });
+            },
+            child: const Text('按风险等级'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _sortBy = 'permissions';
+                _sortApps();
+              });
+            },
+            child: const Text('按权限数量'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _sortBy = 'name';
+                _sortApps();
+              });
+            },
+            child: const Text('按名称'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDestructiveAction: true,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    int grantedCount = _permissions.values
-        .where((status) => status.isGranted)
-        .length;
+    final highRiskCount = _appList.where((app) => app.riskScore >= 30).length;
+    final mediumRiskCount = _appList.where((app) => app.riskScore >= 15 && app.riskScore < 30).length;
 
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: const Text('权限监控'),
         backgroundColor: const Color(0xF0F9F9F9),
-        trailing: CupertinoButton(
-          padding: EdgeInsets.zero,
-          child: const Icon(CupertinoIcons.refresh),
-          onPressed: _checkPermissions,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              child: const Icon(CupertinoIcons.sort_down),
+              onPressed: _showSortOptions,
+            ),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              child: const Icon(CupertinoIcons.refresh),
+              onPressed: _loadInstalledApps,
+            ),
+          ],
         ),
       ),
       child: SafeArea(
         child: Column(
           children: [
-            _buildSummaryCard(grantedCount),
+            _buildSummaryCard(highRiskCount, mediumRiskCount),
+            _buildSearchBar(),
             Expanded(
               child: _isLoading
                   ? const Center(child: CupertinoActivityIndicator())
-                  : _buildPermissionsList(),
+                  : _buildAppList(),
             ),
           ],
         ),
@@ -130,16 +340,16 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
     );
   }
 
-  Widget _buildSummaryCard(int grantedCount) {
+  Widget _buildSummaryCard(int highRiskCount, int mediumRiskCount) {
     Color statusColor;
     String statusText;
     IconData statusIcon;
 
-    if (grantedCount == 0) {
+    if (highRiskCount == 0 && mediumRiskCount == 0) {
       statusColor = CupertinoColors.systemGreen;
       statusText = '安全';
       statusIcon = CupertinoIcons.checkmark_shield_fill;
-    } else if (grantedCount <= 2) {
+    } else if (highRiskCount == 0) {
       statusColor = CupertinoColors.systemYellow;
       statusText = '注意';
       statusIcon = CupertinoIcons.exclamationmark_shield_fill;
@@ -179,7 +389,7 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            '权限状态: $statusText',
+            '扫描状态: $statusText',
             style: const TextStyle(
               color: CupertinoColors.white,
               fontSize: 20,
@@ -188,10 +398,57 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '已授予 $grantedCount/${_dangerousPermissions.length} 项敏感权限',
+            '已扫描 ${_appList.length} 个应用',
             style: const TextStyle(
               color: Color(0xFFE5E5EA),
               fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildStatChip('高危', highRiskCount, CupertinoColors.systemRed),
+              _buildStatChip('中危', mediumRiskCount, CupertinoColors.systemOrange),
+              _buildStatChip('低危', _appList.length - highRiskCount - mediumRiskCount, CupertinoColors.systemBlue),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatChip(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: CupertinoColors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: CupertinoColors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              count.toString(),
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -199,53 +456,82 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
     );
   }
 
-  Widget _buildPermissionsList() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _dangerousPermissions.length,
-      itemBuilder: (context, index) {
-        final permInfo = _dangerousPermissions[index];
-        final status = _permissions[permInfo.name] ?? PermissionStatus.denied;
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: const BoxDecoration(
+        color: CupertinoColors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: CupertinoColors.systemGrey5,
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: CupertinoSearchTextField(
+        controller: _searchController,
+        placeholder: '搜索应用名称或包名',
+        onChanged: _filterApps,
+      ),
+    );
+  }
 
-        return _buildPermissionCard(permInfo, status);
+  Widget _buildAppList() {
+    if (_filteredAppList.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              CupertinoIcons.checkmark_shield_fill,
+              size: 64,
+              color: CupertinoColors.systemGreen,
+            ),
+            SizedBox(height: 16),
+            Text(
+              '未发现可疑应用',
+              style: TextStyle(
+                color: CupertinoColors.systemGrey,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _filteredAppList.length,
+      itemBuilder: (context, index) {
+        return _buildAppCard(_filteredAppList[index]);
       },
     );
   }
 
-  Widget _buildPermissionCard(PermissionInfo permInfo, PermissionStatus status) {
+  Widget _buildAppCard(AppPermissionInfo app) {
     Color riskColor;
     String riskText;
-    switch (permInfo.riskLevel) {
-      case 'high':
-        riskColor = CupertinoColors.systemRed;
-        riskText = '高风险';
-        break;
-      case 'medium':
-        riskColor = CupertinoColors.systemOrange;
-        riskText = '中风险';
-        break;
-      default:
-        riskColor = CupertinoColors.systemBlue;
-        riskText = '低风险';
-    }
 
-    bool isGranted = status.isGranted;
-    Color statusColor = isGranted
-        ? CupertinoColors.systemRed
-        : CupertinoColors.systemGreen;
-    String statusText = isGranted ? '已授权' : '未授权';
+    if (app.riskScore >= 30) {
+      riskColor = CupertinoColors.systemRed;
+      riskText = '高危';
+    } else if (app.riskScore >= 15) {
+      riskColor = CupertinoColors.systemOrange;
+      riskText = '中危';
+    } else {
+      riskColor = CupertinoColors.systemBlue;
+      riskText = '低危';
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: CupertinoColors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isGranted
-              ? CupertinoColors.systemRed.withOpacity(0.3)
-              : CupertinoColors.systemGrey5,
-          width: 1,
+          color: riskColor.withOpacity(0.3),
+          width: 2,
         ),
         boxShadow: [
           BoxShadow(
@@ -256,111 +542,181 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: riskColor.withOpacity(0.1),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                ClipRRect(
                   borderRadius: BorderRadius.circular(10),
+                  child: Image.memory(
+                    app.icon,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                  ),
                 ),
-                child: Icon(
-                  permInfo.icon,
-                  color: riskColor,
-                  size: 24,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        app.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        app.packageName,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: CupertinoColors.systemGrey,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: riskColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        riskText,
+                        style: const TextStyle(
+                          color: CupertinoColors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${app.riskScore}分',
+                        style: const TextStyle(
+                          color: CupertinoColors.white,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemGrey6,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(12),
+                bottomRight: Radius.circular(12),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          permInfo.name,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: riskColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            riskText,
-                            style: TextStyle(
-                              color: riskColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
+                    const Icon(
+                      CupertinoIcons.exclamationmark_triangle_fill,
+                      size: 14,
+                      color: CupertinoColors.systemOrange,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(width: 6),
                     Text(
-                      permInfo.description,
+                      '${app.permissions.length} 项敏感权限',
                       style: const TextStyle(
                         fontSize: 13,
-                        color: CupertinoColors.systemGrey,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    isGranted
-                        ? CupertinoIcons.exclamationmark_circle_fill
-                        : CupertinoIcons.checkmark_circle_fill,
-                    color: statusColor,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    statusText,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: app.permissions.take(6).map((perm) {
+                    final details = _dangerousPermissions[perm];
+                    if (details == null) return const SizedBox.shrink();
+
+                    Color permColor = details.riskLevel == 'high'
+                        ? CupertinoColors.systemRed
+                        : details.riskLevel == 'medium'
+                            ? CupertinoColors.systemOrange
+                            : CupertinoColors.systemBlue;
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: permColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: permColor.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            details.icon,
+                            size: 12,
+                            color: permColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            details.name,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: permColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                if (app.permissions.length > 6)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      '还有 ${app.permissions.length - 6} 项权限...',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: CupertinoColors.systemGrey,
+                      ),
                     ),
                   ),
-                ],
-              ),
-              if (isGranted)
-                CupertinoButton(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  color: CupertinoColors.systemRed,
-                  borderRadius: BorderRadius.circular(8),
-                  minSize: 0,
-                  onPressed: () => openAppSettings(),
-                  child: const Text(
-                    '去撤销',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: CupertinoColors.white,
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: CupertinoButton(
+                    color: riskColor,
+                    borderRadius: BorderRadius.circular(8),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    onPressed: () => _openAppSettings(app.packageName),
+                    child: const Text(
+                      '管理权限',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -368,18 +724,32 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
   }
 }
 
-class PermissionInfo {
-  final Permission permission;
+class AppPermissionInfo {
+  final String name;
+  final String packageName;
+  final List<int> icon;
+  final List<String> permissions;
+  final int riskScore;
+
+  AppPermissionInfo({
+    required this.name,
+    required this.packageName,
+    required this.icon,
+    required this.permissions,
+    required this.riskScore,
+  });
+}
+
+class PermissionDetails {
   final String name;
   final IconData icon;
-  final String description;
+  final int riskScore;
   final String riskLevel;
 
-  PermissionInfo({
-    required this.permission,
+  PermissionDetails({
     required this.name,
     required this.icon,
-    required this.description,
+    required this.riskScore,
     required this.riskLevel,
   });
 }

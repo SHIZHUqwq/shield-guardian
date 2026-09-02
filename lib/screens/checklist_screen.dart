@@ -1,6 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'contacts_alert_screen.dart';
+import 'permission_monitor_screen.dart';
 
 class ChecklistScreen extends StatefulWidget {
   const ChecklistScreen({Key? key}) : super(key: key);
@@ -15,61 +18,81 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       title: '立即冻结所有银行卡',
       description: '拨打银行客服电话，临时冻结所有银行卡，防止资金被盗',
       priority: 'critical',
-      action: '拨打95588/95599等',
+      actionType: ChecklistActionType.bankCall,
+      actionData: {
+        'banks': [
+          {'name': '工商银行', 'phone': '95588'},
+          {'name': '建设银行', 'phone': '95533'},
+          {'name': '农业银行', 'phone': '95599'},
+          {'name': '中国银行', 'phone': '95566'},
+          {'name': '交通银行', 'phone': '95559'},
+          {'name': '招商银行', 'phone': '95555'},
+          {'name': '邮储银行', 'phone': '95580'},
+        ],
+      },
     ),
     ChecklistItem(
       title: '修改支付密码',
       description: '立即修改支付宝、微信支付、银行APP等所有支付密码',
       priority: 'critical',
-      action: '打开各支付APP修改',
+      actionType: ChecklistActionType.openApp,
+      actionData: {
+        'apps': [
+          {'name': '支付宝', 'package': 'com.eg.android.AlipayGphone'},
+          {'name': '微信', 'package': 'com.tencent.mm'},
+        ],
+      },
     ),
     ChecklistItem(
       title: '更改重要账户密码',
       description: '修改邮箱、社交账号、购物平台等重要账户的登录密码',
       priority: 'high',
-      action: '逐个修改密码',
-    ),
-    ChecklistItem(
-      title: '启用双因素认证',
-      description: '在所有支持的平台上启用两步验证或双因素认证',
-      priority: 'high',
-      action: '在账户设置中启用',
+      actionType: ChecklistActionType.openUrl,
+      actionData: {
+        'urls': [
+          {'name': '淘宝/支付宝', 'url': 'https://accounts.alipay.com'},
+          {'name': '京东', 'url': 'https://passport.jd.com'},
+        ],
+      },
     ),
     ChecklistItem(
       title: '检查个人征信',
       description: '登录中国人民银行征信中心，查看是否有异常贷款或信用卡开户',
       priority: 'high',
-      action: '访问征信中心官网',
+      actionType: ChecklistActionType.openUrl,
+      actionData: {
+        'urls': [
+          {'name': '征信中心', 'url': 'https://ipcrs.pbccrc.org.cn'},
+        ],
+      },
     ),
     ChecklistItem(
       title: '通知家人朋友',
       description: '告知通讯录联系人，防止诈骗者冒充你进行二次诈骗',
       priority: 'medium',
-      action: '使用"通知联系人"功能',
-    ),
-    ChecklistItem(
-      title: '卸载可疑应用',
-      description: '卸载所有最近安装的陌生应用，特别是要求过多权限的应用',
-      priority: 'medium',
-      action: '进入系统设置卸载',
+      actionType: ChecklistActionType.navigateScreen,
+      actionData: {'screen': 'contacts'},
     ),
     ChecklistItem(
       title: '撤销应用权限',
       description: '检查并撤销所有不必要的应用权限，特别是通讯录、短信、位置等',
       priority: 'medium',
-      action: '使用"权限监控"功能',
+      actionType: ChecklistActionType.navigateScreen,
+      actionData: {'screen': 'permissions'},
     ),
     ChecklistItem(
       title: '报警备案',
       description: '向当地公安机关报案，保留诈骗证据（聊天记录、转账记录等）',
       priority: 'low',
-      action: '拨打110或前往派出所',
+      actionType: ChecklistActionType.call,
+      actionData: {'phone': '110'},
     ),
     ChecklistItem(
       title: '监控账户动态',
       description: '未来30天持续关注银行账户、征信报告的异常变动',
       priority: 'low',
-      action: '设置余额变动提醒',
+      actionType: ChecklistActionType.none,
+      actionData: {},
     ),
   ];
 
@@ -93,6 +116,160 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   Future<void> _saveCheckedStatus(int index, bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('checklist_$index', value);
+  }
+
+  Future<void> _executeAction(ChecklistItem item) async {
+    switch (item.actionType) {
+      case ChecklistActionType.bankCall:
+        await _showBankSelection(item.actionData['banks'] as List);
+        break;
+      case ChecklistActionType.call:
+        await _makeCall(item.actionData['phone'] as String);
+        break;
+      case ChecklistActionType.openApp:
+        await _showAppSelection(item.actionData['apps'] as List);
+        break;
+      case ChecklistActionType.openUrl:
+        await _showUrlSelection(item.actionData['urls'] as List);
+        break;
+      case ChecklistActionType.navigateScreen:
+        await _navigateToScreen(item.actionData['screen'] as String);
+        break;
+      case ChecklistActionType.none:
+        break;
+    }
+  }
+
+  Future<void> _showBankSelection(List banks) async {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: const Text('选择银行'),
+        message: const Text('拨打银行客服电话冻结银行卡'),
+        actions: banks.map((bank) {
+          return CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(context);
+              _makeCall(bank['phone'] as String);
+            },
+            child: Text('${bank['name']} - ${bank['phone']}'),
+          );
+        }).toList(),
+        cancelButton: CupertinoActionSheetAction(
+          isDestructiveAction: true,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _makeCall(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      _showError('无法拨打电话');
+    }
+  }
+
+  Future<void> _showAppSelection(List apps) async {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: const Text('选择应用'),
+        message: const Text('打开应用修改密码'),
+        actions: apps.map((app) {
+          return CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(context);
+              _openApp(app['package'] as String, app['name'] as String);
+            },
+            child: Text(app['name'] as String),
+          );
+        }).toList(),
+        cancelButton: CupertinoActionSheetAction(
+          isDestructiveAction: true,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openApp(String packageName, String appName) async {
+    final uri = Uri.parse('$packageName://');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      _showError('未安装$appName或无法打开');
+    }
+  }
+
+  Future<void> _showUrlSelection(List urls) async {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: const Text('选择网站'),
+        actions: urls.map((url) {
+          return CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(context);
+              _openUrl(url['url'] as String);
+            },
+            child: Text(url['name'] as String),
+          );
+        }).toList(),
+        cancelButton: CupertinoActionSheetAction(
+          isDestructiveAction: true,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      _showError('无法打开网页');
+    }
+  }
+
+  Future<void> _navigateToScreen(String screen) async {
+    Widget? targetScreen;
+    switch (screen) {
+      case 'contacts':
+        targetScreen = const ContactsAlertScreen();
+        break;
+      case 'permissions':
+        targetScreen = const PermissionMonitorScreen();
+        break;
+    }
+
+    if (targetScreen != null && mounted) {
+      await Navigator.of(context).push(
+        CupertinoPageRoute(builder: (context) => targetScreen!),
+      );
+    }
+  }
+
+  void _showError(String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('提示'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('确定'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -212,130 +389,162 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           ),
         ],
       ),
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: () {
-          setState(() {
-            _checkedItems[index] = !isChecked;
-            _saveCheckedStatus(index, _checkedItems[index]!);
-          });
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                margin: const EdgeInsets.only(top: 2),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isChecked
-                      ? CupertinoColors.systemBlue
-                      : CupertinoColors.systemGrey5,
-                ),
-                child: isChecked
-                    ? const Icon(
-                        CupertinoIcons.check_mark,
-                        size: 14,
-                        color: CupertinoColors.white,
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+      child: Column(
+        children: [
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: () {
+              setState(() {
+                _checkedItems[index] = !isChecked;
+                _saveCheckedStatus(index, _checkedItems[index]!);
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    margin: const EdgeInsets.only(top: 2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isChecked
+                          ? CupertinoColors.systemBlue
+                          : CupertinoColors.systemGrey5,
+                    ),
+                    child: isChecked
+                        ? const Icon(
+                            CupertinoIcons.check_mark,
+                            size: 14,
+                            color: CupertinoColors.white,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: priorityColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            priorityText,
-                            style: TextStyle(
-                              color: priorityColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: priorityColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                priorityText,
+                                style: TextStyle(
+                                  color: priorityColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                item.title,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: isChecked
+                                      ? CupertinoColors.systemGrey
+                                      : CupertinoColors.black,
+                                  decoration: isChecked
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: isChecked
-                                  ? CupertinoColors.systemGrey
-                                  : CupertinoColors.black,
-                              decoration: isChecked
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                            ),
+                        const SizedBox(height: 6),
+                        Text(
+                          item.description,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: CupertinoColors.systemGrey,
+                            height: 1.4,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      item.description,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: CupertinoColors.systemGrey,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(
-                          CupertinoIcons.lightbulb_fill,
-                          size: 14,
-                          color: CupertinoColors.systemYellow,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            item.action,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: CupertinoColors.systemBlue,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+          if (item.actionType != ChecklistActionType.none && !isChecked)
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: CupertinoButton(
+                  color: priorityColor,
+                  borderRadius: BorderRadius.circular(8),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  onPressed: () => _executeAction(item),
+                  child: Text(
+                    _getActionButtonText(item.actionType),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
+
+  String _getActionButtonText(ChecklistActionType type) {
+    switch (type) {
+      case ChecklistActionType.bankCall:
+        return '立即拨打';
+      case ChecklistActionType.call:
+        return '拨打电话';
+      case ChecklistActionType.openApp:
+        return '打开应用';
+      case ChecklistActionType.openUrl:
+        return '访问网站';
+      case ChecklistActionType.navigateScreen:
+        return '立即操作';
+      case ChecklistActionType.none:
+        return '';
+    }
+  }
+}
+
+enum ChecklistActionType {
+  bankCall,
+  call,
+  openApp,
+  openUrl,
+  navigateScreen,
+  none,
 }
 
 class ChecklistItem {
   final String title;
   final String description;
   final String priority;
-  final String action;
+  final ChecklistActionType actionType;
+  final Map<String, dynamic> actionData;
 
   ChecklistItem({
     required this.title,
     required this.description,
     required this.priority,
-    required this.action,
+    required this.actionType,
+    required this.actionData,
   });
 }
