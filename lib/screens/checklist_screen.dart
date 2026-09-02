@@ -233,7 +233,10 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           }),
           ...notInstalledApps.map((appName) {
             return CupertinoActionSheetAction(
-              onPressed: null,
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              isDestructiveAction: false,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -552,7 +555,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        isChecked ? CupertinoIcons.check_mark_circle_fill : priorityIcon,
+                        isChecked ? CupertinoIcons.checkmark_circle_fill : priorityIcon,
                         color: isChecked ? CupertinoColors.systemGreen : priorityColor,
                         size: 24,
                       ),
