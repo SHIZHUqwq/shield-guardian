@@ -322,37 +322,51 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
     final mediumRiskCount = _appList.where((app) => app.riskScore >= 15 && app.riskScore < 30).length;
 
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text('权限监控'),
-        backgroundColor: const Color(0xF0F9F9F9),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              child: const Icon(CupertinoIcons.sort_down),
-              onPressed: _showSortOptions,
+      backgroundColor: const Color(0xFFF2F2F7),
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          CupertinoSliverNavigationBar(
+            backgroundColor: const Color(0xFFF2F2F7),
+            border: null,
+            largeTitle: const Text(
+              '权限监控',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
             ),
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              child: const Icon(CupertinoIcons.refresh),
-              onPressed: _loadInstalledApps,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  child: const Icon(CupertinoIcons.sort_down, size: 24),
+                  onPressed: _showSortOptions,
+                ),
+                const SizedBox(width: 8),
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  child: const Icon(CupertinoIcons.refresh, size: 24),
+                  onPressed: _loadInstalledApps,
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            _buildSummaryCard(highRiskCount, mediumRiskCount),
-            _buildSearchBar(),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CupertinoActivityIndicator())
-                  : _buildAppList(),
+          ),
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                _buildSummaryCard(highRiskCount, mediumRiskCount),
+                _buildSearchBar(),
+              ],
             ),
-          ],
-        ),
+          ),
+          _isLoading
+              ? const SliverFillRemaining(
+                  child: Center(child: CupertinoActivityIndicator()),
+                )
+              : _buildAppList(),
+        ],
       ),
     );
   }
@@ -363,71 +377,79 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
     IconData statusIcon;
 
     if (highRiskCount == 0 && mediumRiskCount == 0) {
-      statusColor = CupertinoColors.systemGreen;
+      statusColor = const Color(0xFF34C759);
       statusText = '安全';
       statusIcon = CupertinoIcons.checkmark_shield_fill;
     } else if (highRiskCount == 0) {
-      statusColor = CupertinoColors.systemYellow;
+      statusColor = const Color(0xFFFFCC00);
       statusText = '注意';
       statusIcon = CupertinoIcons.exclamationmark_shield_fill;
     } else {
-      statusColor = CupertinoColors.systemRed;
+      statusColor = const Color(0xFFFF3B30);
       statusText = '警告';
       statusIcon = CupertinoIcons.xmark_shield_fill;
     }
 
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
             statusColor,
-            statusColor.withOpacity(0.7),
+            Color.lerp(statusColor, CupertinoColors.white, 0.2)!,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: statusColor.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: statusColor.withOpacity(0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         children: [
-          Icon(
-            statusIcon,
-            size: 48,
-            color: CupertinoColors.white,
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: CupertinoColors.white.withOpacity(0.25),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              statusIcon,
+              size: 48,
+              color: CupertinoColors.white,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Text(
             '扫描状态: $statusText',
             style: const TextStyle(
               color: CupertinoColors.white,
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
+              letterSpacing: -0.3,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             '已扫描 ${_appList.length} 个应用',
-            style: const TextStyle(
-              color: Color(0xFFE5E5EA),
+            style: TextStyle(
+              color: CupertinoColors.white.withOpacity(0.9),
               fontSize: 15,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildStatChip('高危', highRiskCount, CupertinoColors.systemRed),
-              _buildStatChip('中危', mediumRiskCount, CupertinoColors.systemOrange),
-              _buildStatChip('低危', _appList.length - highRiskCount - mediumRiskCount, CupertinoColors.systemBlue),
+              _buildStatChip('高危', highRiskCount, const Color(0xFFFF3B30)),
+              _buildStatChip('中危', mediumRiskCount, const Color(0xFFFF9500)),
+              _buildStatChip('低危', _appList.length - highRiskCount - mediumRiskCount, const Color(0xFF007AFF)),
             ],
           ),
         ],
@@ -437,12 +459,12 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
 
   Widget _buildStatChip(String label, int count, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: CupertinoColors.white.withOpacity(0.2),
+        color: CupertinoColors.white.withOpacity(0.25),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
         children: [
           Text(
             label,
@@ -452,18 +474,18 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(height: 4),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: CupertinoColors.white,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               count.toString(),
               style: TextStyle(
                 color: color,
-                fontSize: 12,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -475,54 +497,66 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
 
   Widget _buildSearchBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: const BoxDecoration(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
         color: CupertinoColors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: CupertinoColors.systemGrey5,
-            width: 0.5,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-        ),
+        ],
       ),
       child: CupertinoSearchTextField(
         controller: _searchController,
         placeholder: '搜索应用名称或包名',
         onChanged: _filterApps,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2F2F7),
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
     );
   }
 
   Widget _buildAppList() {
     if (_filteredAppList.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.checkmark_shield_fill,
-              size: 64,
-              color: CupertinoColors.systemGreen,
-            ),
-            SizedBox(height: 16),
-            Text(
-              '未发现可疑应用',
-              style: TextStyle(
-                color: CupertinoColors.systemGrey,
-                fontSize: 16,
+      return const SliverFillRemaining(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                CupertinoIcons.checkmark_shield_fill,
+                size: 64,
+                color: CupertinoColors.systemGrey3,
               ),
-            ),
-          ],
+              SizedBox(height: 16),
+              Text(
+                '未发现可疑应用',
+                style: TextStyle(
+                  color: CupertinoColors.systemGrey,
+                  fontSize: 17,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _filteredAppList.length,
-      itemBuilder: (context, index) {
-        return _buildAppCard(_filteredAppList[index]);
-      },
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => _buildAppCard(_filteredAppList[index]),
+          childCount: _filteredAppList.length,
+        ),
+      ),
     );
   }
 
@@ -531,75 +565,75 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
     String riskText;
 
     if (app.riskScore >= 30) {
-      riskColor = CupertinoColors.systemRed;
+      riskColor = const Color(0xFFFF3B30);
       riskText = '高危';
     } else if (app.riskScore >= 15) {
-      riskColor = CupertinoColors.systemOrange;
+      riskColor = const Color(0xFFFF9500);
       riskText = '中危';
     } else {
-      riskColor = CupertinoColors.systemBlue;
+      riskColor = const Color(0xFF007AFF);
       riskText = '低危';
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: CupertinoColors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: riskColor.withOpacity(0.3),
+          color: riskColor.withOpacity(0.2),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: CupertinoColors.systemGrey.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   child: app.icon != null && app.icon!.isNotEmpty
                       ? Image.memory(
                           Uint8List.fromList(app.icon!),
-                          width: 50,
-                          height: 50,
+                          width: 56,
+                          height: 56,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
-                              width: 50,
-                              height: 50,
-                              color: CupertinoColors.systemGrey5,
+                              width: 56,
+                              height: 56,
+                              color: const Color(0xFFF2F2F7),
                               child: const Icon(
                                 CupertinoIcons.app_fill,
-                                size: 30,
+                                size: 32,
                                 color: CupertinoColors.systemGrey,
                               ),
                             );
                           },
                         )
                       : Container(
-                          width: 50,
-                          height: 50,
+                          width: 56,
+                          height: 56,
                           decoration: BoxDecoration(
-                            color: CupertinoColors.systemGrey5,
-                            borderRadius: BorderRadius.circular(10),
+                            color: const Color(0xFFF2F2F7),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
                             CupertinoIcons.app_fill,
-                            size: 30,
+                            size: 32,
                             color: CupertinoColors.systemGrey,
                           ),
                         ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -607,8 +641,9 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
                       Text(
                         app.name,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 17,
                           fontWeight: FontWeight.w600,
+                          letterSpacing: -0.3,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -617,7 +652,7 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
                       Text(
                         app.packageName,
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: CupertinoColors.systemGrey,
                         ),
                         maxLines: 1,
@@ -626,11 +661,19 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: riskColor,
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: riskColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
@@ -638,15 +681,16 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
                         riskText,
                         style: const TextStyle(
                           color: CupertinoColors.white,
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         '${app.riskScore}分',
                         style: const TextStyle(
                           color: CupertinoColors.white,
-                          fontSize: 10,
+                          fontSize: 11,
                         ),
                       ),
                     ],
@@ -656,12 +700,12 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey6,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-                bottomRight: Radius.circular(12),
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF2F2F7),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
               ),
             ),
             child: Column(
@@ -671,41 +715,41 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
                   children: [
                     const Icon(
                       CupertinoIcons.exclamationmark_triangle_fill,
-                      size: 14,
-                      color: CupertinoColors.systemOrange,
+                      size: 16,
+                      color: Color(0xFFFF9500),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Text(
                       '${app.permissions.length} 项敏感权限',
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: app.permissions.take(6).map((perm) {
                     final details = _dangerousPermissions[perm];
                     if (details == null) return const SizedBox.shrink();
 
                     Color permColor = details.riskLevel == 'high'
-                        ? CupertinoColors.systemRed
+                        ? const Color(0xFFFF3B30)
                         : details.riskLevel == 'medium'
-                            ? CupertinoColors.systemOrange
-                            : CupertinoColors.systemBlue;
+                            ? const Color(0xFFFF9500)
+                            : const Color(0xFF007AFF);
 
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: permColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
+                        color: CupertinoColors.white,
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: permColor.withOpacity(0.3),
-                          width: 1,
+                          width: 1.5,
                         ),
                       ),
                       child: Row(
@@ -713,14 +757,14 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
                         children: [
                           Icon(
                             details.icon,
-                            size: 12,
+                            size: 14,
                             color: permColor,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 6),
                           Text(
                             details.name,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               color: permColor,
                               fontWeight: FontWeight.w600,
                             ),
@@ -732,27 +776,27 @@ class _PermissionMonitorScreenState extends State<PermissionMonitorScreen> {
                 ),
                 if (app.permissions.length > 6)
                   Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       '还有 ${app.permissions.length - 6} 项权限...',
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: CupertinoColors.systemGrey,
                       ),
                     ),
                   ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: CupertinoButton(
                     color: riskColor,
-                    borderRadius: BorderRadius.circular(8),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    borderRadius: BorderRadius.circular(12),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     onPressed: () => _openAppSettings(app.packageName),
                     child: const Text(
                       '管理权限',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
